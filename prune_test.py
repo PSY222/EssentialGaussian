@@ -18,13 +18,16 @@ import gc
 import numpy as np
 from collections import defaultdict
 
-def calculate_importance_score(gaussians, imp_list, v_pow,option='Lgs'):
+def calculate_v_imp_score(gaussians, imp_list, v_pow,option='Lgs'):
     if option =='Lgs':
-        volume = np.prod(gaussians.get_scaling(), axis=1)
+        volume = np.prod(gaussians.get_scaling(), axis=1) #scene/gaussian_model.py file
         sorted_volume = np.sort(volume)[::-1]
         kth_largest = sorted_volume[int(len(volume) * 0.9)]
         v_list = (volume / kth_largest) ** v_pow
-    #other scoring method
+    #elif : other scoring method
+    '''
+    :return: A list of adjusted values (v_list) used for pruning.
+    '''
     return v_list * imp_list
 
 def calculate_iou(gaussian1, gaussian2,method='ellipses'):
@@ -33,6 +36,34 @@ def calculate_iou(gaussian1, gaussian2,method='ellipses'):
            
     return iou
 
+def prune_list(gaussians, scene, pipe, background):
+    viewpoint_stack = scene.getTrainCameras().copy()
+    gaussian_list, imp_list = None, None
+    viewpoint_cam = viewpoint_stack.pop()
+    render_pkg = count_render(viewpoint_cam, gaussians, pipe, background)
+    gaussian_list, imp_list = (
+        render_pkg["gaussians_count"],
+        render_pkg["important_score"],
+    )
+
+    # ic(dataset.model_path)
+    for iteration in range(len(viewpoint_stack)):
+        # Pick a random Camera
+        # prunning
+        viewpoint_cam = viewpoint_stack.pop()
+        render_pkg = count_render(viewpoint_cam, gaussians, pipe, background)
+        # image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
+        gaussians_count, important_score = (
+            render_pkg["gaussians_count"].detach(),
+            render_pkg["important_score"].detach(),
+        )
+        gaussian_list += gaussians_count
+        imp_list += important_score
+        gc.collect()
+    return gaussian_list, imp_list
+
+# Make the function to return gaussian_list,imp_list
+# prune and select gaussian ->calculate_importance socre 로 연결되어야 함
 def prune_and_select_gaussians(gaussians, scene, pipe, background, threshold, nyquist_limit, v_pow):
     # Step 1: Calculate importance scores
     gaussian_list, imp_list = prune_list(gaussians, scene, pipe, background)
@@ -47,6 +78,7 @@ def prune_and_select_gaussians(gaussians, scene, pipe, background, threshold, ny
             if len(selected_gaussians) >= nyquist_limit:
                 break
     return aggregate_gaussians(selected_gaussians)
+
 
 def aggregate_gaussians(gaussians):
     lmax = calculate_lmax(gaussians)
@@ -63,16 +95,7 @@ def aggregate_gaussians(gaussians):
                 insert_into_scene(Gnew)
     return get_combined_gaussians()
 
-def main():
-    gaussians = load_initial_gaussians()
-    iou_threshold = 0.5
-    nyquist_limit = calculate_nyquist_limit(scene_complexity, desired_reconstruction_quality)
-    v_pow = 2
-    final_gaussians = prune_and_select_gaussians(gaussians, scene, pipe, background, iou_threshold, nyquist_limit, v_pow)
-    output_final_gaussians(final_gaussians)
-
 # Placeholder helper functions
-def bounding_ellipse_iou(gaussian1, gaussian2): pass
 def prune_list(gaussians, scene, pipe, background): pass
 def calculate_lmax(gaussians): pass
 def pixel_coverage(gaussians, scale): pass
@@ -81,6 +104,4 @@ def average(gaussians): pass
 def enlarge(gaussian): pass
 def insert_into_scene(gaussian): pass
 def get_combined_gaussians(): pass
-def load_initial_gaussians(): pass
-def output_final_gaussians(gaussians): pass
 def calculate_nyquist_limit(scene_complexity, desired_reconstruction_quality): pass
