@@ -192,7 +192,7 @@ def training(
                 )
                 
                 if iteration == checkpoint_iterations[-1]:
-                    gaussian_list, imp_list = prune_list(gaussians, scene, pipe, background)
+                    gaussian_list, imp_list, prob_list = prune_list(gaussians, scene, pipe, background)
                     v_list = calculate_v_imp_score(gaussians, imp_list, args.v_pow)
                     np.savez(os.path.join(scene.model_path,"imp_score"), v_list.cpu().detach().numpy()) 
 
@@ -205,7 +205,6 @@ def training(
                 l1_loss,
                 iter_start.elapsed_time(iter_end),
                 testing_iterations,
-                scene,
                 render,
                 (pipe, background),
             )
@@ -213,7 +212,7 @@ def training(
             if iteration in args.prune_iterations:
                 ic("Before prune iteration, number of gaussians: " + str(len(gaussians.get_xyz)))
                 i = args.prune_iterations.index(iteration)
-                gaussian_list, imp_list = prune_list(gaussians, scene, pipe, background)
+                gaussian_list, imp_list, prob_list = prune_list(gaussians, scene, pipe, background)
 
                 if args.prune_type == "important_score":
                     gaussians.prune_gaussians(
@@ -238,6 +237,11 @@ def training(
                     gaussians.prune_gaussians(
                         (args.prune_decay**i) * args.prune_percent,
                         gaussians.get_opacity.detach(),
+                    )
+                # Added probability based sampling method from Min-Splatting    
+                elif args.prune_type == "probability":
+                    gaussians.prune_prob_gaussians(
+                        args.factor, prob_list
                     )
                 # TODO(release different pruning method)
                 # elif args.prune_type == "HDBSCAN":
@@ -320,6 +324,8 @@ if __name__ == "__main__":
     )  # k_mean, farther_point_sample, important_score
     parser.add_argument("--v_pow", type=float, default=0.1)
     parser.add_argument("--densify_iteration", nargs="+", type=int, default=[-1])
+    #Added factoring score for stochastic probability sampling
+    parser.add_argument("--factor", type=float, default=0.5)
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
 

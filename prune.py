@@ -128,8 +128,6 @@ def calculate_v_imp_score(gaussians, imp_list, v_pow):
     return v_list
 
 
-
-
 def prune_list(gaussians, scene, pipe, background):
     viewpoint_stack = scene.getTrainCameras().copy()
     gaussian_list, imp_list = None, None

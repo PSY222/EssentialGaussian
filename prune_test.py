@@ -27,14 +27,16 @@ def calculate_v_imp_score(gaussians, imp_list, v_pow,option='Lgs'):
     #elif : other scoring method
     '''
     :return: A list of adjusted values (v_list) used for pruning.
+    
+    It is delivered to scene/gaussian_model/prune_gaussian function!!
     '''
     return v_list * imp_list
 
-def calculate_iou(gaussian1, gaussian2,method='ellipses'):
-    if method =='ellipses':
-    elif method == 'mean_dst':
+# def calculate_iou(gaussian1, gaussian2,method='ellipses'):
+#     if method =='ellipses':
+#     elif method == 'mean_dst':
            
-    return iou
+#     return iou
 
 def prune_list(gaussians, scene, pipe, background):
     viewpoint_stack = scene.getTrainCameras().copy()
@@ -46,7 +48,10 @@ def prune_list(gaussians, scene, pipe, background):
         render_pkg["important_score"],
     )
 
-    # ic(dataset.model_path)
+    # Initialize prob_list
+    prob_list = imp_list / imp_list.sum()
+
+    ic(dataset.model_path)
     for iteration in range(len(viewpoint_stack)):
         # Pick a random Camera
         # prunning
@@ -59,27 +64,23 @@ def prune_list(gaussians, scene, pipe, background):
         )
         gaussian_list += gaussians_count
         imp_list += important_score
+        prob_list += (important_score/ important_score.sum())
         gc.collect()
-    return gaussian_list, imp_list
+    return gaussian_list, imp_list, prob_list
 
 # Make the function to return gaussian_list,imp_list
 # prune and select gaussian ->calculate_importance socre 로 연결되어야 함
-def prune_and_select_gaussians(gaussians, scene, pipe, background, threshold, nyquist_limit, v_pow):
-    # Step 1: Calculate importance scores
-    gaussian_list, imp_list = prune_list(gaussians, scene, pipe, background)
-    scores = calculate_importance_score(gaussian_list, imp_list, v_pow)
-    gaussians_with_scores = sorted(zip(gaussian_list, scores), key=lambda x: x[1], reverse=True)
+# def prune_and_select_gaussians(gaussians, scene, pipe, background, threshold, nyquist_limit, v_pow):
+#     # Step 1: Calculate importance scores
+#     gaussian_list, imp_list = prune_list(gaussians, scene, pipe, background)
 
-    # Step 2: Suppress Gaussians based on IoU and threshold, ensuring Nyquist limit
-    selected_gaussians = []
-    for gaussian, score in gaussians_with_scores:
-        if all(calculate_iou(gaussian, sg) <= threshold for sg in selected_gaussians):
-            selected_gaussians.append(gaussian)
-            if len(selected_gaussians) >= nyquist_limit:
-                break
-    return aggregate_gaussians(selected_gaussians)
+#     scores = calculate_importance_score(gaussian_list, imp_list, v_pow)
+#     # Initialise probability list
+#     prob_list = (scores/scores.sum())
+#     gaussians_with_scores = sorted(zip(gaussian_list, scores), key=lambda x: x[1], reverse=True)
+#     return aggregate_gaussians(selected_gaussians)
 
-
+#Find the corresponding part on MS-GS code
 def aggregate_gaussians(gaussians):
     lmax = calculate_lmax(gaussians)
     for lm in range(2, lmax + 1):

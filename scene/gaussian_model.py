@@ -780,6 +780,20 @@ class GaussianModel:
         value_nth_percentile = sorted_tensor[index_nth_percentile]
         prune_mask = (import_score <= value_nth_percentile).squeeze()
         self.prune_points(prune_mask)
+        
+    # Added 'prune_prob_gaussians' to add the probablistic sampling instead of direct pruning
+    def prune_prob_gaussians(self, factor, prob_score: list):
+         N_xyz = self._xyz.shape[0]
+        overall_mask = np.zeros(N_xyz, dtype=bool)
+
+        for prob in prob_score:
+            # Filter non-zero probabilities
+            mask = prob != 0
+            filtered_prob = prob[mask]
+            num_sampled = int(N_xyz * factor * (filtered_prob.size / prob.size))
+            indices = np.random.choice(N_xyz, size=num_sampled, p=filtered_prob, replace=False)
+            overall_mask[indices] = True
+        self.prune_points(~overall_mask)
 
     def add_densification_stats(self, viewspace_point_tensor, update_filter):
         self.xyz_gradient_accum[update_filter] += torch.norm(

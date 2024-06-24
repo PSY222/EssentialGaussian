@@ -43,7 +43,7 @@ def save_imp_score(dataset, opt, pipe, checkpoint, args):
 
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
     background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
-    gaussian_list, imp_list = prune_list(gaussians, scene, pipe, background) 
+    gaussian_list, imp_list, prob_list = prune_list(gaussians, scene, pipe, background) 
     v_list = calculate_v_imp_score(gaussians, imp_list, args.v_pow)
     np.savez(os.path.join(scene.model_path,"imp_score"), v_list)
     

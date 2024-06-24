@@ -173,7 +173,7 @@ def training(args, dataset, opt, pipe, testing_iterations, saving_iterations, ch
 
                 if iteration == checkpoint_iterations[-1]:
                     print("Saving Imp_score")
-                    gaussian_list, imp_list = prune_list(
+                    gaussian_list, imp_list,prob_list = prune_list(
                         student_gaussians, student_scene, pipe, background
                     )
                     v_list = calculate_v_imp_score(student_gaussians, imp_list, 0.1)
